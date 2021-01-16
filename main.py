@@ -1,4 +1,3 @@
-from modules import tg, secondchecker
 import sys, re
 exit = sys.exit
 from telegram.ext import Updater, MessageHandler, CommandHandler, CallbackContext
