@@ -44,7 +44,13 @@ def rawhandler(update, context):
     except ValueError:
         update.message.reply_text("not a regular add second format!")
         return
+    if addsec > 1000:
+        update.message.reply_text("Too many seconds\! Please send seconds below `1000`\.",parse_mode=ParseMode.MARKDOWN_V2)
+        return
     sec = sec + addsec
+    if sec > 100000:
+        update.message.reply_text("That is enough\! Ask @emojiwiki to clear seconds\!",parse_mode=ParseMode.MARKDOWN_V2)
+        return
     update.message.reply_text("Thank you for your second\! current seconds: `"+str(sec)+"`",parse_mode=ParseMode.MARKDOWN_V2)
     save(sec)
 
