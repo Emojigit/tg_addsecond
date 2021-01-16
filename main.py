@@ -6,6 +6,27 @@ from telegram.ext.filters import Filters
 from telegram.error import InvalidToken
 from telegram import ParseMode, Update
 
+settings = {
+    "each": {
+        "min": 1,
+        "max": 10,
+    },
+    "total": {
+        "min": 0,
+        "max": 1000000,
+    },
+    "feedback": {
+        "FormatError": "Not a regular add second format\!",
+        "TooManyError": "Too many seconds\! Please send seconds below `{}`\.",
+        "TooSmallError": "Too small second count\! Please send seconds bigger then `{}`\.",
+        "EnoughError": "That is enough\! Ask @emojiwiki to clear seconds\, use /limit to get limits\!",
+        "Success": "Thank you for your second\! current seconds: `{}`",
+        "StealError": "Trying to steal seconds from Him\, your life balance has been taken away by the elderly\. He will take half of the day\, forever\.",
+        "Get": "Current seconds: `{}`",
+        "LimitFeedBack": "Limits:\n\# Each donation\nmin: `{emin}`\nmax: `{emax}`\n\# Total\nmax: `{tmax}`"
+    },
+}
+
 def load():
     try:
         with open("seconds.txt","r") as f:
@@ -35,27 +56,38 @@ def rawhandler(update, context):
     try:
         result = re.search('\+(.*)s', update.message.text).group(1)
     except AttributeError:
-        print("[WARNING] Got invalid plus second request")
-        return
+        try:
+            result = re.search('\-(.*)s', update.message.text).group(1)
+            update.message.reply_text(settings["feedback"]["StealError"],parse_mode=ParseMode.MARKDOWN_V2)
+        except AttributeError:
+            pass
+        finally:
+            return
     sec = load()
     addsec = 0
     try:
         addsec = int(result)
     except ValueError:
-        update.message.reply_text("not a regular add second format!")
+        update.message.reply_text(settings["feedback"]["FormatError"],parse_mode=ParseMode.MARKDOWN_V2)
         return
-    if addsec > 10:
-        update.message.reply_text("Too many seconds\! Please send seconds below `10`\.",parse_mode=ParseMode.MARKDOWN_V2)
+    if addsec > settings["each"]["max"]:
+        update.message.reply_text(settings["feedback"]["TooManyError"].format(str(settings["each"]["max"])),parse_mode=ParseMode.MARKDOWN_V2)
+        return
+    if addsec < settings["each"]["min"]:
+        update.message.reply_text(settings["feedback"]["TooSmallError"].format(str(settings["each"]["min"])),parse_mode=ParseMode.MARKDOWN_V2)
         return
     sec = sec + addsec
-    if sec > 1000000:
-        update.message.reply_text("That is enough\! Ask @emojiwiki to clear seconds\!",parse_mode=ParseMode.MARKDOWN_V2)
+    if sec > settings["total"]["max"]:
+        update.message.reply_text(settings["feedback"]["EnoughError"],parse_mode=ParseMode.MARKDOWN_V2)
         return
-    update.message.reply_text("Thank you for your second\! current seconds: `"+str(sec)+"`",parse_mode=ParseMode.MARKDOWN_V2)
+    update.message.reply_text(settings["feedback"]["Success"].format(str(sec)),parse_mode=ParseMode.MARKDOWN_V2)
     save(sec)
 
 def get(update: Update, context: CallbackContext):
-    update.message.reply_text('Current seconds: `{}`'.format(str(load())),parse_mode=ParseMode.MARKDOWN_V2)
+    update.message.reply_text(settings["feedback"]["Get"].format(str(load())),parse_mode=ParseMode.MARKDOWN_V2)
+
+def limit(update: Update, context: CallbackContext):
+    update.message.reply_text(settings["feedback"]["LimitFeedBack"].format(emin=settings["each"]["min"],emax=settings["each"]["max"],tmax=settings["total"]["max"],),parse_mode=ParseMode.MARKDOWN_V2)
 
 def main():
     """Start the bot."""
@@ -69,6 +101,7 @@ def main():
         raise
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('get', get))
+    dp.add_handler(CommandHandler('limit', limit))
     dp.add_handler(MessageHandler(Filters.text, rawhandler))
     updater.start_polling()
     updater.idle()
