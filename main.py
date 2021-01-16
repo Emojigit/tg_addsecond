@@ -22,7 +22,8 @@ settings = {
         "Success": "Thank you for your second\! current seconds: `{}`",
         "StealError": "Trying to steal seconds from Him\, your life balance has been taken away by the elderly\. He will take half of the day\, forever\.",
         "Get": "Current seconds: `{}`",
-        "LimitFeedBack": "Limits:\n\# Each donation\nmin: `{emin}`\nmax: `{emax}`\n\# Total\nmax: `{tmax}`"
+        "LimitFeedBack": "Limits:\n\# Each donation\nmin: `{emin}`\nmax: `{emax}`\n\# Total\nmax: `{tmax}`",
+        "StickerFeedBack": "CAACAgUAAxkBAAMpYAJwIZSj8AVEmqtb1ngZb6tOpLgAAjYAA5sHqT6HF6eLr1hlsx4E",
     },
 }
 
@@ -88,6 +89,9 @@ def get(update: Update, context: CallbackContext):
 def limit(update: Update, context: CallbackContext):
     update.message.reply_text(settings["feedback"]["LimitFeedBack"].format(emin=settings["each"]["min"],emax=settings["each"]["max"],tmax=settings["total"]["max"],),parse_mode=ParseMode.MARKDOWN_V2)
 
+def sticker(update: Update, context: CallbackContext):
+    update.message.reply_sticker(settings["feedback"]["StickerFeedBack"])
+
 def main():
     """Start the bot."""
     tok = token()
@@ -101,6 +105,7 @@ def main():
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('get', get))
     dp.add_handler(CommandHandler('limit', limit))
+    dp.add_handler(CommandHandler('sticker', sticker))
     dp.add_handler(MessageHandler(Filters.text, rawhandler))
     updater.start_polling()
     updater.idle()
