@@ -138,7 +138,7 @@ def main():
         updater = Updater(tok, use_context=True)
         logger["MainScript"].info("Get updater success!")
     except InvalidToken:
-        logger["MainScript"].critical("Invalic Token! Plase edit token.txt and fill in a valid token.")
+        logger["MainScript"].critical("Invalid Token! Plase edit token.txt and fill in a valid token.")
         raise
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('get', get))
