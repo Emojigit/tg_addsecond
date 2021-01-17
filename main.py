@@ -1,9 +1,11 @@
-import sys, re
+import sys, re, logging
 exit = sys.exit
 from telegram.ext import Updater, MessageHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 from telegram.error import InvalidToken
 from telegram import ParseMode, Update
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 
 settings = {
     "each": {
