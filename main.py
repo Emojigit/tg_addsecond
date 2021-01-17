@@ -4,7 +4,6 @@ from telegram.ext import Updater, MessageHandler, CommandHandler, CallbackContex
 from telegram.ext.filters import Filters
 from telegram.error import InvalidToken
 from telegram import ParseMode, Update
-logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 settings = {
@@ -27,41 +26,70 @@ settings = {
         "LimitFeedBack": "Limits:\n\# Each donation\nmin: `{emin}`\nmax: `{emax}`\n\# Total\nmax: `{tmax}`",
         "StickerFeedBack": "CAACAgUAAxkBAAMpYAJwIZSj8AVEmqtb1ngZb6tOpLgAAjYAA5sHqT6HF6eLr1hlsx4E",
     },
+    "logging": {
+        "level": logging.INFO,
+        "format": "%(asctime)s %(levelname)s[%(name)s] %(message)s",
+        "filename": "debug.txt",
+    },
 }
+logging.basicConfig(level=settings["logging"]["level"],format=settings["logging"]["format"])
+logger = {
+    "SecondSaver": logging.getLogger("SecondSaver"),
+    "TokenReader": logging.getLogger("TokenReader"),
+    "MessageHandler": logging.getLogger("MessageHandler"),
+    "CommandHandler": logging.getLogger("MessageHandler"),
+    "MainScript": logging.getLogger("MainScript"),
+    "root": logging.getLogger()
+}
+rootfh = logging.FileHandler("debug.txt")
+rootfh.setFormatter(logging.Formatter(settings["logging"]["format"]))
+logger["root"].addHandler(rootfh)
 
 def load():
     try:
         with open("seconds.txt","r") as f:
             try:
-                return int(f.read())
+                sec = int(f.read())
+                logger["SecondSaver"].info("Got {} in seconds.txt".format(str(sec)))
+                return sec
             except ValueError:
-                print("[ERROR] Error while loading seconds.txt : invalid int in the file!")
+                logger["SecondSaver"].error("Error while loading seconds.txt : invalid int in the file")
+                # print("[ERROR] Error while loading seconds.txt : invalid int in the file!")
                 exit(2)
     except FileNotFoundError:
-        print("[WARNING] No seconds.txt!")
+        logger["SecondSaver"].warning("No seconds.txt!")
+        # print("[WARNING] No seconds.txt!")
         return 0
+
+load()
 
 def token():
     try:
         with open("token.txt","r") as f:
             return f.read().rstrip('\n')
     except FileNotFoundError:
-        print("[ERROR] No token.txt!")
+        logger["TokenReader"].error("No token.txt!")
+        # print("[ERROR] No token.txt!")
         exit(3)
 
 def save(seconds):
     with open("seconds.txt","w+") as f:
         f.write(str(seconds))
+    logger["SecondSaver"].info("written seconds!")
 
 def rawhandler(update, context):
     result = ""
     try:
         result = re.search('\+(.*)s', update.message.text).group(1)
+        logger["MessageHandler"].info("Got {} seconds".format(str(result)))
     except AttributeError:
+        logger["MessageHandler"].warning("Get plus seconds failed, trying to get minus seconds")
         try:
             result = re.search('\-(.*)s', update.message.text).group(1)
             update.message.reply_text(settings["feedback"]["StealError"],parse_mode=ParseMode.MARKDOWN_V2)
+            logger["MessageHandler"].info("Got {} minus seconds".format(str(result)))
         except AttributeError:
+            logger["MessageHandler"].warning("Not a seconds operation!")
             pass
         finally:
             return
@@ -70,28 +98,37 @@ def rawhandler(update, context):
     try:
         addsec = int(result)
     except ValueError:
+        logger["MessageHandler"].warning("Wrong format while procession add seconds request")
         update.message.reply_text(settings["feedback"]["FormatError"],parse_mode=ParseMode.MARKDOWN_V2)
         return
     if addsec > settings["each"]["max"]:
+        logger["MessageHandler"].warning("Too many seconds!")
         update.message.reply_text(settings["feedback"]["TooManyError"].format(str(settings["each"]["max"])),parse_mode=ParseMode.MARKDOWN_V2)
         return
     if addsec < settings["each"]["min"]:
+        logger["MessageHandler"].warning("Too small add second request!")
         update.message.reply_text(settings["feedback"]["TooSmallError"].format(str(settings["each"]["min"])),parse_mode=ParseMode.MARKDOWN_V2)
         return
     sec = sec + addsec
     if sec > settings["total"]["max"]:
+        logger["MessageHandler"].warning("Total seconds is enough!")
         update.message.reply_text(settings["feedback"]["EnoughError"],parse_mode=ParseMode.MARKDOWN_V2)
         return
+    logger["MessageHandler"].info("Add second success! seconds now: {}".format(str(sec)))
     update.message.reply_text(settings["feedback"]["Success"].format(str(sec)),parse_mode=ParseMode.MARKDOWN_V2)
     save(sec)
 
 def get(update: Update, context: CallbackContext):
-    update.message.reply_text(settings["feedback"]["Get"].format(str(load())),parse_mode=ParseMode.MARKDOWN_V2)
+    sec = str(load())
+    logger["CommandHandler"].info("Got get command! seconds now: {}".format(sec))
+    update.message.reply_text(settings["feedback"]["Get"].format(sec),parse_mode=ParseMode.MARKDOWN_V2)
 
 def limit(update: Update, context: CallbackContext):
+    logger["CommandHandler"].info("Got limit command!")
     update.message.reply_text(settings["feedback"]["LimitFeedBack"].format(emin=settings["each"]["min"],emax=settings["each"]["max"],tmax=settings["total"]["max"],),parse_mode=ParseMode.MARKDOWN_V2)
 
 def sticker(update: Update, context: CallbackContext):
+    logger["CommandHandler"].info("Got sticker command!")
     update.message.reply_sticker(settings["feedback"]["StickerFeedBack"])
 
 def main():
@@ -99,10 +136,9 @@ def main():
     tok = token()
     try:
         updater = Updater(tok, use_context=True)
+        logger["MainScript"].info("Get updater success!")
     except InvalidToken:
-        print("[ERROR] Invalid token!")
-        print("[ERROR] Token string:")
-        print("[ERROR] "+tok)
+        logger["MainScript"].critical("Invalic Token! Plase edit token.txt and fill in a valid token.")
         raise
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('get', get))
@@ -110,6 +146,7 @@ def main():
     dp.add_handler(CommandHandler('sticker', sticker))
     dp.add_handler(MessageHandler(Filters.text, rawhandler))
     updater.start_polling()
+    logger["MainScript"].info("Started the bot! Use Ctrl-C to stop it.")
     updater.idle()
 
 
